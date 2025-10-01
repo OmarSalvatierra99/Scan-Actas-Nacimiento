@@ -1,0 +1,38 @@
+<div id="tablaRegistros">
+    {% if registros %}
+    <div class="table-container">
+        <table class="registros-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Registrado</th>
+                    <th>CURP</th>
+                    <th>Padre</th>
+                    <th>Madre</th>
+                    <th>Municipio</th>
+                    <th>Fecha Nac.</th>
+                    <th>Hora Escaneo</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for registro in registros | reverse %}
+                <tr>
+                    <td class="numero">{{ loop.index }}</td>
+                    <td>{{ registro.Registrado or "-" }}</td>
+                    <td class="curp-cell">{{ registro.CURP or "-" }}</td>
+                    <td>{{ registro.Padre or "-" }}</td>
+                    <td>{{ registro.Madre or "-" }}</td>
+                    <td>{{ registro.Municipio or "-" }}</td>
+                    <td>{{ registro.FechaNacimiento or "-" }}</td>
+                    <td>{{ registro.FechaEscaneo.split(' ')[1][:8] if registro.FechaEscaneo else "-" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-table">
+        No hay actas escaneadas aún. Comience escaneando un código QR.
+    </div>
+    {% endif %}
+</div>
