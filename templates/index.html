@@ -1,434 +1,160 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Escáner de Actas - Gobierno</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Escáner de Actas - Gobierno del Estado de Tlaxcala</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
+
 <body>
-    <div class="container">
-        <header class="header">
-            <h1>📄 Escáner de Actas de Nacimiento</h1>
-            <p>Sistema oficial de digitalización de actas</p>
-        </header>
-
-        <div class="scan-methods">
-            <div class="method-tabs">
-                <button class="tab-btn active" data-tab="pdf">📄 Subir Acta PDF</button>
-                <button class="tab-btn" data-tab="usb">🔌 Lector QR USB</button>
-            </div>
-
-            <!-- Pestaña PDF -->
-            <div id="pdf-tab" class="tab-content active">
-                <div class="pdf-container">
-                    <div class="pdf-instructions">
-                        <h3>Instrucciones para subir acta PDF:</h3>
-                        <ol>
-                            <li>Haga clic en "Seleccionar PDF"</li>
-                            <li>Seleccione el archivo PDF del acta de nacimiento</li>
-                            <li>El sistema escaneará automáticamente los códigos QR</li>
-                            <li>Se procesarán todas las actas encontradas en el PDF</li>
-                        </ol>
-                        <div style="background: #fef3c7; padding: 1rem; border-radius: 0.5rem; margin-top: 1rem; border-left: 4px solid #f59e0b;">
-                            <strong>💡 Tip:</strong> Puede subir múltiples PDFs, el sistema procesará todos los códigos QR encontrados.
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <input type="file" id="pdfInput" accept=".pdf" class="file-input" style="display: none;">
-                        <label for="pdfInput" class="btn btn-primary">📄 Seleccionar PDF</label>
-                        <span id="pdfFileName" style="margin-left: 10px; color: #666;"></span>
-                    </div>
-                    <div id="pdfProgress" style="display: none;">
-                        <div style="background: #f0f9ff; padding: 1rem; border-radius: 0.5rem; text-align: center;">
-                            <p>🔄 Procesando PDF, por favor espere...</p>
-                            <div style="background: #e2e8f0; border-radius: 10px; height: 10px; margin: 10px 0;">
-                                <div id="pdfProgressBar" style="background: #3b82f6; height: 100%; width: 0%; border-radius: 10px; transition: width 0.3s;"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="pdfResults"></div>
-                </div>
-            </div>
-
-            <!-- Pestaña USB -->
-            <div id="usb-tab" class="tab-content">
-                <div class="usb-container">
-                    <div class="usb-instructions">
-                        <h3>Instrucciones para Lector QR USB:</h3>
-                        <ol>
-                            <li>Conecte el lector QR USB a la computadora</li>
-                            <li>Haga clic en el campo de texto inferior</li>
-                            <li>Escanee el código QR con el lector USB</li>
-                            <li>Los datos aparecerán automáticamente</li>
-                            <li>Presione ENTER o el botón "Guardar Acta"</li>
-                        </ol>
-                        <div style="background: #f0f9ff; padding: 1rem; border-radius: 0.5rem; margin-top: 1rem; border-left: 4px solid #0ea5e9;">
-                            <strong>⚡ Rápido:</strong> El escaneo es instantáneo. Después de guardar, el campo se limpia automáticamente para el siguiente escaneo.
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="usbInput">Datos del Lector USB:</label>
-                        <input
-                            type="text"
-                            id="usbInput"
-                            class="usb-input"
-                            placeholder="Haga clic aquí y escanee con el lector USB..."
-                        >
-                    </div>
-                    <button id="btnProcessUSB" class="btn btn-primary" disabled>💾 Guardar Acta</button>
-                </div>
-            </div>
+  <!-- ===== ENCABEZADO ===== -->
+  <header class="header">
+    <div class="header-content">
+      <div class="header-left">
+        <img src="{{ url_for('static', filename='img/ofs_logo.png') }}" alt="Logo OFS Tlaxcala" class="ofs-logo" />
+        <div class="header-text">
+          <h1>Escáner de Actas de Nacimiento</h1>
+          <p>Sistema oficial de digitalización y registro de actas</p>
         </div>
-
-        <div id="resultMessage" class="result-message"></div>
-
-        <div class="controls-panel">
-            <div class="stats">
-                <span class="stat-count">Total de actas escaneadas: <strong id="totalRegistros">{{ total }}</strong></span>
-            </div>
-            <div class="actions">
-                <a href="{{ url_for('descargar_excel') }}" class="btn btn-download">
-                    📥 Descargar Excel
-                </a>
-                <button id="btnLimpiar" class="btn btn-clear">
-                    🗑️ Limpiar Todo
-                </button>
-            </div>
+      </div>
+      <div class="header-right">
+        <div class="user-info">
+          <img src="{{ url_for('static', filename='img/avatar_default.png') }}" alt="Usuario" class="avatar" />
+          <div>
+            <h2>Gobierno del Estado de Tlaxcala</h2>
+            <p>Órgano de Fiscalización Superior</p>
+          </div>
         </div>
-
-        <div class="table-panel">
-            <h2>📋 Actas Escaneadas (Más recientes primero)</h2>
-            {% include '_tabla_registros.html' %}
-        </div>
+      </div>
     </div>
+  </header>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', (event) => {
-            // Variables globales
-            const tablaRegistrosContainer = document.getElementById('tablaRegistros');
+  <!-- ===== CONTENIDO PRINCIPAL ===== -->
+  <main class="container">
+    <section class="scan-methods">
+      <div class="method-tabs">
+        <button class="tab-btn active" data-tab="pdf">📄 Subir Acta PDF</button>
+        <button class="tab-btn" data-tab="usb">🔌 Lector QR USB</button>
+      </div>
 
-            // SISTEMA DE PESTAÑAS
-            function setupTabs() {
-                const tabButtons = document.querySelectorAll('.tab-btn');
-                const tabContents = document.querySelectorAll('.tab-content');
-                
-                tabButtons.forEach(button => {
-                    button.addEventListener('click', () => {
-                        const tabId = button.getAttribute('data-tab');
-                        
-                        // Remover activo de todos los botones y contenidos
-                        tabButtons.forEach(btn => btn.classList.remove('active'));
-                        tabContents.forEach(content => content.classList.remove('active'));
-                        
-                        // Activar botón y contenido seleccionado
-                        button.classList.add('active');
-                        document.getElementById(tabId + '-tab').classList.add('active');
-                        
-                        // Enfocar input USB si estamos en esa pestaña
-                        if (tabId === 'usb') {
-                            setTimeout(() => {
-                                document.getElementById('usbInput').focus();
-                            }, 100);
-                        }
-                    });
-                });
-            }
+      <!-- ===== PESTAÑA PDF ===== -->
+      <div id="pdf-tab" class="tab-content active">
+        <div class="pdf-container">
+          <div class="pdf-instructions">
+            <h3>Instrucciones para subir acta PDF</h3>
+            <ol>
+              <li>Seleccione el archivo PDF del acta de nacimiento.</li>
+              <li>El sistema analizará automáticamente los códigos QR.</li>
+              <li>Se procesarán todas las actas encontradas.</li>
+            </ol>
+            <div class="alert alert-warning" style="margin-top:1rem;">
+              <strong>💡 Tip:</strong> Puede subir varios PDFs, el sistema procesará todos los códigos encontrados.
+            </div>
+          </div>
 
-            // Inicializar pestañas
-            setupTabs();
+          <div class="form-group">
+            <input type="file" id="pdfInput" accept=".pdf" class="file-input" style="display: none;">
+            <label for="pdfInput" class="btn btn-primary">📄 Seleccionar PDF</label>
+            <span id="pdfFileName"></span>
+          </div>
 
-            // Procesar PDF
-            document.getElementById('pdfInput').addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    // Validar tipo de archivo
-                    if (!file.name.toLowerCase().endsWith('.pdf')) {
-                        showMessage('❌ Error: El archivo debe ser un PDF', 'error');
-                        this.value = '';
-                        document.getElementById('pdfFileName').textContent = '';
-                        return;
-                    }
+          <div id="pdfProgress" style="display:none;">
+            <div class="alert alert-info" style="text-align:center;">
+              <p>🔄 Procesando PDF, por favor espere...</p>
+              <div style="background:#e2e8f0;border-radius:10px;height:10px;margin:10px 0;">
+                <div id="pdfProgressBar" style="background:var(--color-primary-light);height:100%;width:0%;border-radius:10px;transition:width 0.3s;"></div>
+              </div>
+            </div>
+          </div>
 
-                    // Validar tamaño (max 10MB)
-                    if (file.size > 10 * 1024 * 1024) {
-                        showMessage('❌ Error: El archivo PDF no debe exceder 10MB', 'error');
-                        this.value = '';
-                        document.getElementById('pdfFileName').textContent = '';
-                        return;
-                    }
+          <div id="pdfResults"></div>
+        </div>
+      </div>
 
-                    document.getElementById('pdfFileName').textContent = file.name + ' (' + formatFileSize(file.size) + ')';
-                    processPDF(file);
-                }
-            });
+      <!-- ===== PESTAÑA USB ===== -->
+      <div id="usb-tab" class="tab-content">
+        <div class="usb-container">
+          <div class="usb-instructions">
+            <h3>Instrucciones para lector QR USB</h3>
+            <ol>
+              <li>Conecte el lector QR USB.</li>
+              <li>Haga clic en el campo de texto inferior.</li>
+              <li>Escanee el código QR y presione ENTER.</li>
+            </ol>
+            <div class="alert alert-info" style="margin-top:1rem;">
+              <strong>⚡ Rápido:</strong> Cada lectura se guarda automáticamente y prepara el siguiente escaneo.
+            </div>
+          </div>
 
-            function formatFileSize(bytes) {
-                if (bytes === 0) return '0 Bytes';
-                const k = 1024;
-                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-                const i = Math.floor(Math.log(bytes) / Math.log(k));
-                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-            }
+          <div class="form-group">
+            <label for="usbInput">Datos del lector USB</label>
+            <input type="text" id="usbInput" class="usb-input" placeholder="Haga clic aquí y escanee con el lector USB..." />
+          </div>
+          <button id="btnProcessUSB" class="btn btn-primary" disabled>💾 Guardar Acta</button>
+        </div>
+      </div>
+    </section>
 
-            async function processPDF(file) {
-                showMessage('⏳ Procesando PDF...', 'info');
-                
-                const progressDiv = document.getElementById('pdfProgress');
-                const progressBar = document.getElementById('pdfProgressBar');
-                const resultsDiv = document.getElementById('pdfResults');
-                const pdfInput = document.getElementById('pdfInput');
-                
-                progressDiv.style.display = 'block';
-                progressBar.style.width = '30%';
-                resultsDiv.innerHTML = '';
+    <!-- ===== MENSAJE GLOBAL ===== -->
+    <div id="resultMessage" class="result-message"></div>
 
-                const formData = new FormData();
-                formData.append('pdf_file', file);
+    <!-- ===== PANEL DE CONTROL ===== -->
+    <section class="controls-panel">
+      <div class="stats">
+        Total de actas escaneadas: <strong id="totalRegistros">{{ total }}</strong>
+      </div>
+      <div class="actions">
+        <a href="{{ url_for('descargar_excel') }}" class="btn btn-download">📥 Descargar Excel</a>
+        <button id="btnLimpiar" class="btn btn-error">🗑️ Limpiar Todo</button>
+      </div>
+    </section>
 
-                try {
-                    const response = await fetch('/procesar_pdf', {
-                        method: 'POST',
-                        body: formData
-                    });
+    <!-- ===== TABLA DE RESULTADOS ===== -->
+    <section class="table-panel">
+      <h2>📋 Actas Escaneadas (más recientes primero)</h2>
+      {% include '_tabla_registros.html' %}
+    </section>
+  </main>
 
-                    progressBar.style.width = '100%';
+  <!-- ===== PIE DE PÁGINA ===== -->
+  <footer class="footer">
+    <p>&copy; {{ current_year }} Gobierno del Estado de Tlaxcala · Órgano de Fiscalización Superior</p>
+  </footer>
 
-                    const data = await response.json();
+  <!-- ===== SCRIPT PRINCIPAL ===== -->
+  <script>
+    // === SISTEMA DE PESTAÑAS ===
+    document.addEventListener('DOMContentLoaded', () => {
+      const tabButtons = document.querySelectorAll('.tab-btn');
+      const tabContents = document.querySelectorAll('.tab-content');
 
-                    if (data.success) {
-                        showMessage(`✅ ${data.message}`, 'success');
-                        
-                        // Mostrar resultados detallados
-                        let resultadosHTML = `<div style="background: #ecfdf5; padding: 1.5rem; border-radius: 0.75rem; margin-top: 1rem;">
-                            <h4 style="margin-top: 0; color: #059669;">📊 Resultados del procesamiento:</h4>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
-                                <div style="background: white; padding: 1rem; border-radius: 0.5rem; text-align: center;">
-                                    <div style="font-size: 1.5rem; font-weight: bold; color: #3b82f6;">${data.total_encontrados}</div>
-                                    <div style="color: #64748b; font-size: 0.9rem;">Códigos QR encontrados</div>
-                                </div>
-                                <div style="background: white; padding: 1rem; border-radius: 0.5rem; text-align: center;">
-                                    <div style="font-size: 1.5rem; font-weight: bold; color: #10b981;">${data.total_procesados}</div>
-                                    <div style="color: #64748b; font-size: 0.9rem;">Actas procesadas</div>
-                                </div>
-                            </div>
-                        </div>`;
-                        
-                        if (data.resultados && data.resultados.length > 0) {
-                            resultadosHTML += `<div style="margin-top: 1.5rem;">
-                                <h4 style="color: #374151;">Detalles por código QR:</h4>
-                                <div style="max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 0.5rem;">`;
-                            
-                            data.resultados.forEach((resultado, index) => {
-                                const status = resultado.success ? '✅' : '❌';
-                                const bgColor = resultado.success ? '#ecfdf5' : '#fef2f2';
-                                const borderColor = resultado.success ? '#a7f3d0' : '#fecaca';
-                                
-                                resultadosHTML += `
-                                    <div style="padding: 1rem; border-bottom: 1px solid #e2e8f0; background: ${bgColor}; border-left: 4px solid ${borderColor};">
-                                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                            <strong style="color: #374151;">QR ${index + 1}:</strong>
-                                            <span style="font-size: 1.2rem;">${status}</span>
-                                        </div>
-                                        <div style="color: #475569; font-size: 0.9rem;">${resultado.message}</div>
-                                        ${resultado.success && resultado.qr_data ? `
-                                        <div style="margin-top: 0.5rem; padding: 0.5rem; background: white; border-radius: 0.25rem; font-family: 'Courier New', monospace; font-size: 0.8rem; color: #64748b; overflow-x: auto;">
-                                            ${resultado.qr_data.substring(0, 100)}...
-                                        </div>
-                                        ` : ''}
-                                    </div>`;
-                            });
-                            
-                            resultadosHTML += `</div></div>`;
-                        }
-                        
-                        resultsDiv.innerHTML = resultadosHTML;
-                        updateInterface(data);
-                        playBeep();
-                        
-                        // Limpiar input para permitir nuevo archivo
-                        pdfInput.value = '';
-                        document.getElementById('pdfFileName').textContent = '';
-                        
-                    } else {
-                        showMessage('❌ ' + data.message, 'error');
-                        resultsDiv.innerHTML = `<div style="background: #fef2f2; padding: 1.5rem; border-radius: 0.75rem; margin-top: 1rem;">
-                            <h4 style="margin-top: 0; color: #dc2626;">❌ Error en el procesamiento</h4>
-                            <p style="color: #475569;">${data.message}</p>
-                        </div>`;
-                    }
-                } catch (error) {
-                    showMessage('❌ Error procesando PDF: ' + error.message, 'error');
-                    resultsDiv.innerHTML = `<div style="background: #fef2f2; padding: 1.5rem; border-radius: 0.75rem; margin-top: 1rem;">
-                        <h4 style="margin-top: 0; color: #dc2626;">❌ Error de conexión</h4>
-                        <p style="color: #475569;">${error.message}</p>
-                    </div>`;
-                } finally {
-                    setTimeout(() => {
-                        progressDiv.style.display = 'none';
-                        progressBar.style.width = '0%';
-                    }, 1000);
-                }
-            }
+      tabButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tab = btn.getAttribute('data-tab');
 
-            // Lector USB
-            const usbInput = document.getElementById('usbInput');
-            const btnProcessUSB = document.getElementById('btnProcessUSB');
+          // Quitar "active" de todos
+          tabButtons.forEach(b => b.classList.remove('active'));
+          tabContents.forEach(c => c.classList.remove('active'));
 
-            usbInput.addEventListener('focus', function() {
-                showMessage('🔌 Listo para escanear - Use el lector USB', 'info');
-            });
+          // Activar seleccionado
+          btn.classList.add('active');
+          document.getElementById(`${tab}-tab`).classList.add('active');
 
-            usbInput.addEventListener('input', function(e) {
-                const value = e.target.value.trim();
-                btnProcessUSB.disabled = value.length <= 10;
-                if (!btnProcessUSB.disabled) {
-                    showMessage('✅ Datos recibidos del lector USB - Presione ENTER o el botón Guardar', 'success');
-                }
-            });
-
-            usbInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter' && !btnProcessUSB.disabled) {
-                    e.preventDefault();
-                    processUSBData();
-                }
-            });
-
-            btnProcessUSB.addEventListener('click', processUSBData);
-
-            function processUSBData() {
-                const data = usbInput.value.trim();
-                if (data.length > 10) {
-                    processQRData(data);
-                }
-            }
-
-            // Función para procesar datos QR (USB)
-            async function processQRData(qrData) {
-                showMessage('⏳ Procesando acta...', 'info');
-                btnProcessUSB.disabled = true;
-                usbInput.disabled = true;
-
-                try {
-                    const response = await fetch('/procesar_qr', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ qr_data: qrData })
-                    });
-
-                    const data = await response.json();
-
-                    if (data.success) {
-                        showMessage('✅ ' + data.message, 'success');
-                        updateInterface(data);
-                        playBeep();
-                        
-                        // Limpiar y preparar para siguiente escaneo
-                        usbInput.value = '';
-                        setTimeout(() => {
-                            usbInput.focus();
-                            showMessage('🔌 Listo para siguiente escaneo', 'info');
-                        }, 1000);
-                    } else {
-                        showMessage('❌ ' + data.message, 'error');
-                        // Mantener los datos para corrección
-                        usbInput.focus();
-                        usbInput.select();
-                    }
-                } catch (error) {
-                    showMessage('❌ Error de conexión: ' + error.message, 'error');
-                } finally {
-                    btnProcessUSB.disabled = usbInput.value.trim().length <= 10;
-                    usbInput.disabled = false;
-                }
-            }
-
-            // Función para actualizar interfaz
-            function updateInterface(data) {
-                if (tablaRegistrosContainer && data.tabla_html) {
-                    tablaRegistrosContainer.innerHTML = data.tabla_html;
-                }
-                if (data.total_registros !== undefined) {
-                    document.getElementById('totalRegistros').textContent = data.total_registros;
-                }
-            }
-
-            // Limpiar registros
-            document.getElementById('btnLimpiar').addEventListener('click', async function() {
-                if (!confirm('¿Está seguro de que desea limpiar todos los registros? Esta acción no se puede deshacer.')) {
-                    return;
-                }
-
-                const btn = this;
-                const originalText = btn.innerHTML;
-                btn.innerHTML = '⏳ Limpiando...';
-                btn.disabled = true;
-
-                try {
-                    const response = await fetch('/limpiar_registros', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        }
-                    });
-
-                    const data = await response.json();
-
-                    if (data.success) {
-                        showMessage('✅ ' + data.message, 'success');
-                        updateInterface(data);
-                    } else {
-                        showMessage('❌ ' + data.message, 'error');
-                    }
-                } catch (error) {
-                    showMessage('❌ Error de conexión: ' + error.message, 'error');
-                } finally {
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                }
-            });
-
-            // Utilidades
-            function showMessage(message, type) {
-                const resultDiv = document.getElementById('resultMessage');
-                if (resultDiv) {
-                    resultDiv.innerHTML = `<div class="message ${type}">${message}</div>`;
-                    resultDiv.style.display = 'block';
-
-                    if (type === 'info') {
-                        setTimeout(() => {
-                            if (resultDiv.innerHTML.includes(message)) {
-                                resultDiv.style.display = 'none';
-                            }
-                        }, 4000);
-                    }
-                }
-            }
-
-            function playBeep() {
-                try {
-                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    const oscillator = audioContext.createOscillator();
-                    const gainNode = audioContext.createGain();
-
-                    oscillator.connect(gainNode);
-                    gainNode.connect(audioContext.destination);
-
-                    oscillator.frequency.value = 800;
-                    oscillator.type = 'sine';
-
-                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-
-                    oscillator.start(audioContext.currentTime);
-                    oscillator.stop(audioContext.currentTime + 0.2);
-                } catch (error) {
-                    console.log("Audio no disponible");
-                }
-            }
+          // Si es USB, enfocar campo automáticamente
+          if (tab === 'usb') {
+            setTimeout(() => {
+              const usbInput = document.getElementById('usbInput');
+              if (usbInput) usbInput.focus();
+            }, 200);
+          }
         });
-    </script>
+      });
+    });
+  </script>
+
+  <!-- Tu lógica principal puede seguir en main.js -->
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
+
