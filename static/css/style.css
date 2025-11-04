@@ -460,4 +460,21 @@ body {
     font-size: 1.3rem;
   }
 }
+/* ===== Cámara ===== */
+.cam-container { display: grid; gap: 1rem; }
+.cam-preview {
+  position: relative;
+  background: #000;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  max-width: 640px;
+}
+#camVideo { width: 100%; height: auto; display: block; }
+.cam-frame {
+  position: absolute; inset: 10%; border: 3px solid rgba(255,255,255,0.7);
+  border-radius: 12px; pointer-events: none;
+}
+.cam-controls { display: flex; align-items: center; gap: 1rem; }
+.cam-status { color: var(--color-muted); font-weight: 600; }
 

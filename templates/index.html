@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Escáner de Actas | OFS Tlaxcala</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <!-- jsQR para decodificar QR en el navegador -->
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 </head>
 
 <body>
-  <!-- ===== ENCABEZADO ===== -->
   <header class="header">
     <div class="header-content">
       <div class="header-left">
@@ -30,27 +31,24 @@
     </div>
   </header>
 
-  <!-- ===== CONTENIDO PRINCIPAL ===== -->
   <main class="container">
     <section class="scan-methods">
       <div class="method-tabs">
         <button class="tab-btn active" data-tab="pdf">📄 Subir Acta PDF</button>
         <button class="tab-btn" data-tab="usb">🔌 Lector QR USB</button>
+        <button class="tab-btn" data-tab="cam">📷 Cámara del navegador</button>
       </div>
 
-      <!-- ===== PESTAÑA PDF ===== -->
+      <!-- ===== PDF ===== -->
       <div id="pdf-tab" class="tab-content active">
         <div class="pdf-container">
           <div class="pdf-instructions">
             <h3>Instrucciones para subir acta PDF</h3>
             <ol>
-              <li>Seleccione el archivo PDF del acta de nacimiento.</li>
-              <li>El sistema analizará automáticamente los códigos QR.</li>
-              <li>Se procesarán todas las actas encontradas.</li>
+              <li>Seleccione el archivo PDF del acta.</li>
+              <li>El sistema detectará el QR o extraerá datos del texto.</li>
+              <li>Se registrarán todas las actas válidas.</li>
             </ol>
-            <div class="alert alert-warning" style="margin-top:1rem;">
-              <strong>💡 Tip:</strong> Puede subir varios PDFs, el sistema procesará todos los códigos encontrados.
-            </div>
           </div>
 
           <div class="form-group">
@@ -60,8 +58,8 @@
           </div>
 
           <div id="pdfProgress" style="display:none;">
-            <div class="alert alert-info" style="text-align:center;">
-              <p>🔄 Procesando PDF, por favor espere...</p>
+            <div class="message info">
+              <p>Procesando PDF...</p>
               <div style="background:#e2e8f0;border-radius:10px;height:10px;margin:10px 0;">
                 <div id="pdfProgressBar" style="background:var(--color-primary-light);height:100%;width:0%;border-radius:10px;transition:width 0.3s;"></div>
               </div>
@@ -72,34 +70,55 @@
         </div>
       </div>
 
-      <!-- ===== PESTAÑA USB ===== -->
+      <!-- ===== USB ===== -->
       <div id="usb-tab" class="tab-content">
         <div class="usb-container">
           <div class="usb-instructions">
             <h3>Instrucciones para lector QR USB</h3>
             <ol>
               <li>Conecte el lector QR USB.</li>
-              <li>Haga clic en el campo de texto inferior.</li>
-              <li>Escanee el código QR y presione ENTER.</li>
+              <li>Haga clic en el campo de texto.</li>
+              <li>Escanee el QR y presione ENTER.</li>
             </ol>
-            <div class="alert alert-info" style="margin-top:1rem;">
-              <strong>⚡ Rápido:</strong> Cada lectura se guarda automáticamente y prepara el siguiente escaneo.
-            </div>
           </div>
 
           <div class="form-group">
             <label for="usbInput">Datos del lector USB</label>
-            <input type="text" id="usbInput" class="usb-input" placeholder="Haga clic aquí y escanee con el lector USB..." />
+            <input type="text" id="usbInput" class="usb-input" placeholder="Haga clic aquí y escanee..." />
           </div>
           <button id="btnProcessUSB" class="btn btn-primary" disabled>💾 Guardar Acta</button>
         </div>
       </div>
+
+      <!-- ===== CÁMARA ===== -->
+      <div id="cam-tab" class="tab-content">
+        <div class="cam-container">
+          <div class="usb-instructions">
+            <h3>Escaneo con cámara del navegador</h3>
+            <ol>
+              <li>Concede permiso a la cámara.</li>
+              <li>Coloca el QR dentro del recuadro.</li>
+              <li>El sistema registrará automáticamente al detectar un QR válido.</li>
+            </ol>
+          </div>
+
+          <div class="cam-preview">
+            <video id="camVideo" playsinline muted></video>
+            <canvas id="camCanvas" style="display:none;"></canvas>
+            <div class="cam-frame"></div>
+          </div>
+
+          <div class="cam-controls">
+            <button id="btnStartCam" class="btn btn-primary">▶ Iniciar cámara</button>
+            <button id="btnStopCam" class="btn btn-error" disabled>■ Detener</button>
+            <span id="camStatus" class="cam-status">Inactiva</span>
+          </div>
+        </div>
+      </div>
     </section>
 
-    <!-- ===== MENSAJE GLOBAL ===== -->
     <div id="resultMessage" class="result-message"></div>
 
-    <!-- ===== PANEL DE CONTROL ===== -->
     <section class="controls-panel">
       <div class="stats">
         Total de actas escaneadas: <strong id="totalRegistros">{{ total }}</strong>
@@ -110,51 +129,181 @@
       </div>
     </section>
 
-    <!-- ===== TABLA DE RESULTADOS ===== -->
     <section class="table-panel">
       <h2>📋 Actas Escaneadas (más recientes primero)</h2>
-      {% include '_tabla_registros.html' %}
+      <div id="tablaRegistros">{% include '_tabla_registros.html' %}</div>
     </section>
   </main>
 
-  <!-- ===== PIE DE PÁGINA ===== -->
   <footer class="footer">
     <p>&copy; {{ current_year }} Gobierno del Estado de Tlaxcala · Órgano de Fiscalización Superior</p>
   </footer>
 
-  <!-- ===== SCRIPT PRINCIPAL ===== -->
   <script>
-    // === SISTEMA DE PESTAÑAS ===
+    // ===== Tabs =====
     document.addEventListener('DOMContentLoaded', () => {
       const tabButtons = document.querySelectorAll('.tab-btn');
       const tabContents = document.querySelectorAll('.tab-content');
-
       tabButtons.forEach(btn => {
         btn.addEventListener('click', () => {
           const tab = btn.getAttribute('data-tab');
-
-          // Quitar "active" de todos
           tabButtons.forEach(b => b.classList.remove('active'));
           tabContents.forEach(c => c.classList.remove('active'));
-
-          // Activar seleccionado
           btn.classList.add('active');
           document.getElementById(`${tab}-tab`).classList.add('active');
-
-          // Si es USB, enfocar campo automáticamente
-          if (tab === 'usb') {
-            setTimeout(() => {
-              const usbInput = document.getElementById('usbInput');
-              if (usbInput) usbInput.focus();
-            }, 200);
-          }
+          if (tab === 'usb') setTimeout(() => document.getElementById('usbInput')?.focus(), 200);
         });
       });
     });
+
+    // ===== USB input =====
+    const usbInput = document.getElementById('usbInput');
+    const btnProcessUSB = document.getElementById('btnProcessUSB');
+    if (usbInput) {
+      usbInput.addEventListener('input', () => {
+        btnProcessUSB.disabled = usbInput.value.trim().length === 0;
+      });
+      btnProcessUSB.addEventListener('click', async () => {
+        const v = usbInput.value.trim();
+        if (!v) return;
+        await postQR(v);
+        usbInput.value = '';
+        btnProcessUSB.disabled = true;
+        usbInput.focus();
+      });
+      usbInput.addEventListener('keydown', async (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          btnProcessUSB.click();
+        }
+      });
+    }
+
+    // ===== PDF upload =====
+    const pdfInput = document.getElementById('pdfInput');
+    const pdfFileName = document.getElementById('pdfFileName');
+    const pdfProgress = document.getElementById('pdfProgress');
+    const pdfProgressBar = document.getElementById('pdfProgressBar');
+    if (pdfInput) {
+      pdfInput.addEventListener('change', async () => {
+        const f = pdfInput.files?.[0];
+        if (!f) return;
+        pdfFileName.textContent = f.name;
+        pdfProgress.style.display = 'block';
+        pdfProgressBar.style.width = '15%';
+        const form = new FormData();
+        form.append('pdf_file', f);
+        const res = await fetch('/procesar_pdf', { method: 'POST', body: form });
+        pdfProgressBar.style.width = '60%';
+        const data = await res.json();
+        pdfProgressBar.style.width = '100%';
+        showMessage(data.success, data.message || 'Operación completada');
+        if (data.tabla_html) refreshTable(data.tabla_html, data.total_registros);
+        setTimeout(() => { pdfProgress.style.display = 'none'; pdfProgressBar.style.width = '0%'; }, 600);
+      });
+    }
+
+    // ===== Cámara (jsQR) =====
+    let stream = null;
+    let rafId = null;
+    const video = document.getElementById('camVideo');
+    const canvas = document.getElementById('camCanvas');
+    const ctx = canvas?.getContext('2d');
+    const btnStartCam = document.getElementById('btnStartCam');
+    const btnStopCam = document.getElementById('btnStopCam');
+    const camStatus = document.getElementById('camStatus');
+    let scanning = false;
+    let lastSent = '';
+
+    async function startCam() {
+      if (scanning) return;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+        video.srcObject = stream;
+        await video.play();
+        btnStartCam.disabled = true;
+        btnStopCam.disabled = false;
+        camStatus.textContent = 'Escaneando...';
+        scanning = true;
+        tick();
+      } catch (e) {
+        showMessage(false, 'No se pudo acceder a la cámara');
+      }
+    }
+
+    function stopCam() {
+      scanning = false;
+      if (rafId) cancelAnimationFrame(rafId);
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+      }
+      video.pause();
+      video.srcObject = null;
+      btnStartCam.disabled = false;
+      btnStopCam.disabled = true;
+      camStatus.textContent = 'Inactiva';
+    }
+
+    function tick() {
+      if (!scanning) return;
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = window.jsQR ? jsQR(img.data, img.width, img.height, { inversionAttempts: 'attemptBoth' }) : null;
+        if (code && code.data && code.data !== lastSent) {
+          lastSent = code.data;
+          // Registrar directamente por QR textual
+          postQR(code.data).then(() => {
+            // pausa corta para evitar duplicados seguidos
+            setTimeout(() => { lastSent = ''; }, 1000);
+          });
+        }
+      }
+      rafId = requestAnimationFrame(tick);
+    }
+
+    btnStartCam?.addEventListener('click', startCam);
+    btnStopCam?.addEventListener('click', stopCam);
+
+    // ===== Helpers =====
+    async function postQR(qrText) {
+      const res = await fetch('/procesar_qr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ qr_data: qrText })
+      });
+      const data = await res.json();
+      showMessage(data.success, data.message || (data.success ? 'Registrado' : 'Error'));
+      if (data.tabla_html) refreshTable(data.tabla_html, data.total_registros);
+      return data;
+    }
+
+    function showMessage(ok, msg) {
+      const el = document.getElementById('resultMessage');
+      el.className = 'message ' + (ok ? 'success' : 'error');
+      el.textContent = msg;
+      setTimeout(() => { el.className = 'result-message'; el.textContent = ''; }, 5000);
+    }
+
+    function refreshTable(html, total) {
+      document.getElementById('tablaRegistros').innerHTML = html;
+      document.getElementById('totalRegistros').textContent = total;
+    }
+
+    // Limpiar todo
+    document.getElementById('btnLimpiar')?.addEventListener('click', async () => {
+      const res = await fetch('/limpiar_registros', { method: 'POST' });
+      const data = await res.json();
+      showMessage(data.success, data.message || 'Listo');
+      if (data.tabla_html) refreshTable(data.tabla_html, 0);
+    });
   </script>
 
-  <!-- Tu lógica principal puede seguir en main.js -->
-  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <!-- Si usas main.js adicional, mantenlo debajo -->
+  <!-- <script src="{{ url_for('static', filename='js/main.js') }}"></script> -->
 </body>
 </html>
 
